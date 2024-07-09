@@ -1,132 +1,88 @@
-# Dockerized Full Stack Web Application Deployment
+# Full Stack Web Application Deployment
 
-## Project Overview
-
-This repository contains Docker configuration files and setup instructions for deploying a full stack web application consisting of a React frontend, FastAPI backend with PostgreSQL database, and proxy configuration using Nginx Proxy.
+This repository contains the Docker configuration files for deploying a full stack web application, which includes a React frontend and a FastAPI backend.
 
 ## Prerequisites
 
-Make sure you have installed the following tools and dependencies:
+- Docker installed
+- Docker Compose installed
+- npm installed
+- git installed
+- python installed
 
-- Docker
-- Docker Compose
-- Git
+## Getting Started
 
-## Setup Instructions
+To get started with this template, please follow the instructions in the respective directories:
 
-### Local Development
+- [Frontend README](./frontend/README.md)
+- [Backend README](./backend/README.md)
 
-1. **Clone the Repository:**
-   git clone <forked-repository-url>
-   cd <repository-directory>
+## Deploy using Docker locally
 
-2. **Build and Run the Services:**
-   docker-compose up -d --build
+```sh
+git clone https://github.com/yourusername/your-repo.git
+cd your-repo
+```
+### Frontend
+```sh
+cd frontend
 
-3. **Access the Application:**
+docker build -t frontend-image .
 
-- Frontend: http://localhost/
-- Backend API: http://localhost/api/
-- Adminer (Database UI): http://localhost:8080/
+docker run -d -p 5173:5173 frontend-image
+```
+Access the frontend application at 'http://localhost:5173'.
 
-### Deployment on DigitalOcean
+### Backend
+```sh
+cd backend
 
-To deploy the application on DigitalOcean and set up HTTPS with Let's Encrypt, follow these steps:
+docker build -t backend-image .
 
-1. **Prepare Docker Compose File:**
-   Modify `docker-compose.yml` as necessary for production environment settings (e.g., environment variables, volume mounts).
+docker run -d -p 8000:8000 backend-image
+```
+Access the backend application at 'http://localhost:8000'.
 
-2. **Set Up a DigitalOcean Droplet:**
+## Deploy using Docker-compose
 
-- Create a Droplet (virtual machine) on DigitalOcean with Docker installed.
-- Configure SSH access using SSH keys.
+Ensure you're in the root directory of the project:
+```sh
+cd your-repo
+```
+Add your [docker-compose.yml](./docker-compose.yml) file to the root folder.
 
-3. **Deploy Application to Droplet:**
+Run the command:
+```sh
+docker-compose up -d --build
+```
+If it was from a virtual environment like AWS, you can simply create a subdomain name at Afraid DNS and then link your backend and frontend using the proxy manager already existing in the docker-compose.yml file.
 
-- SSH into your Droplet:
-  ```
-  ssh root@your-droplet-ip
-  ```
-- Clone your repository inside the Droplet:
-  ```
-  git clone <repository-url>
-  cd <repository-directory>
-  ```
-- Build and run the Docker containers:
-  ```
-  docker-compose up -d --build
-  ```
+## Configuration
 
-4. **Set Up Domain and HTTPS:**
+### Environment Variables
 
-- Obtain a domain name from a registrar like Namecheap or GoDaddy.
-- Configure DNS records to point to your Droplet's IP address.
-- Install Certbot on your Droplet:
-  ```
-  sudo apt update
-  sudo apt install certbot
-  ```
-- Generate SSL certificate using Certbot:
-  ```
-  sudo certbot certonly --nginx -d your-domain.com -d www.your-domain.com
-  ```
-- Update Nginx configuration (`nginx.conf`) to use SSL certificates and handle HTTPS traffic.
+Ensure you have the necessary environment variables set in the '.env' files located in the 'frontend' and 'backend' directories.
 
-## Nginx Configuration
+## Docker Compose Configuration
 
-Modify Nginx configuration (`nginx.conf`) to handle routing for frontend and backend services, ensuring:
+The 'docker-compose.yml' file defines the services and their configurations.
 
-- Frontend serves on root (http://domain/)
-- Backend APIs proxy to `/api` (http://domain/api/)
-- Adminer accessible via subdomain (http://db.domain/)
+## Troubleshooting
 
-### Example `nginx.conf`
+1. Ensure Docker and Docker Compose are installed and running.
 
-```nginx
-server {
- listen 80;
- server_name your-domain.com www.your-domain.com;
+2. Check for any port conflicts on your machine.
 
- location / {
-     root /usr/share/nginx/html;
-     index index.html;
-     try_files $uri $uri/ /index.html;
- }
+3. Verify that the .env files are correctly configured.
 
- location /api/ {
-     proxy_pass http://backend:8000/;
-     proxy_set_header Host $host;
-     proxy_set_header X-Real-IP $remote_addr;
-     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-     proxy_set_header X-Forwarded-Proto $scheme;
- }
+## Cleanup
 
- location /docs/ {
-     proxy_pass http://backend:8000/docs/;
-     proxy_set_header Host $host;
-     proxy_set_header X-Real-IP $remote_addr;
-     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-     proxy_set_header X-Forwarded-Proto $scheme;
- }
+To stop the containers and remove the network:
+```sh
+docker-compose down
+```
 
- listen [::]:443 ssl ipv6only=on; # managed by Certbot
- listen 443 ssl; # managed by Certbot
- ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem; # managed by Certbot
- ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem; # managed by Certbot
- include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
- ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
-}
-
-server {
- listen 8080;
- server_name adminer.your-domain.com;
-
- location / {
-     proxy_pass http://adminer:8080/;
-     proxy_set_header Host $host;
-     proxy_set_header X-Real-IP $remote_addr;
-     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-     proxy_set_header X-Forwarded-Proto $scheme;
- }
-}
+To remove all Docker containers, images, and volumes (use with caution):
+```sh
+docker system prune -a --volumes
 ```
