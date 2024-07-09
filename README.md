@@ -1,274 +1,132 @@
-# Full-Stack FastAPI and React Template
+# Dockerized Full Stack Web Application Deployment
 
-Welcome to the Full-Stack FastAPI and React template repository. This repository serves as a demo application for interns, showcasing how to set up and run a full-stack application with a FastAPI backend and a ReactJS frontend using ChakraUI.
+## Project Overview
 
-
----
-
-# My Full Stack Application
-
-This is a full stack web application that consists of a frontend built with Vite and a backend built with Python's FastAPI. The services are containerized using Docker and orchestrated using Docker Compose. 
+This repository contains Docker configuration files and setup instructions for deploying a full stack web application consisting of a React frontend, FastAPI backend with PostgreSQL database, and proxy configuration using Nginx Proxy.
 
 ## Prerequisites
 
+Make sure you have installed the following tools and dependencies:
+
 - Docker
 - Docker Compose
+- Git
 
-## Project Structure
+## Setup Instructions
 
-The repository is organized into two main directories:
+### Local Development
 
-- **frontend**: Contains the ReactJS application.
-- **backend**: Contains the FastAPI application and PostgreSQL database integration.
+1. **Clone the Repository:**
+   git clone <forked-repository-url>
+   cd <repository-directory>
 
-Each directory has its own README file with detailed instructions specific to that part of the application.
+2. **Build and Run the Services:**
+   docker-compose up -d --build
 
+3. **Access the Application:**
+
+- Frontend: http://localhost/
+- Backend API: http://localhost/api/
+- Adminer (Database UI): http://localhost:8080/
+
+### Deployment on DigitalOcean
+
+To deploy the application on DigitalOcean and set up HTTPS with Let's Encrypt, follow these steps:
+
+1. **Prepare Docker Compose File:**
+   Modify `docker-compose.yml` as necessary for production environment settings (e.g., environment variables, volume mounts).
+
+2. **Set Up a DigitalOcean Droplet:**
+
+- Create a Droplet (virtual machine) on DigitalOcean with Docker installed.
+- Configure SSH access using SSH keys.
+
+3. **Deploy Application to Droplet:**
+
+- SSH into your Droplet:
+  ```
+  ssh root@your-droplet-ip
+  ```
+- Clone your repository inside the Droplet:
+  ```
+  git clone <repository-url>
+  cd <repository-directory>
+  ```
+- Build and run the Docker containers:
+  ```
+  docker-compose up -d --build
+  ```
+
+4. **Set Up Domain and HTTPS:**
+
+- Obtain a domain name from a registrar like Namecheap or GoDaddy.
+- Configure DNS records to point to your Droplet's IP address.
+- Install Certbot on your Droplet:
+  ```
+  sudo apt update
+  sudo apt install certbot
+  ```
+- Generate SSL certificate using Certbot:
+  ```
+  sudo certbot certonly --nginx -d your-domain.com -d www.your-domain.com
+  ```
+- Update Nginx configuration (`nginx.conf`) to use SSL certificates and handle HTTPS traffic.
+
+## Nginx Configuration
+
+Modify Nginx configuration (`nginx.conf`) to handle routing for frontend and backend services, ensuring:
+
+- Frontend serves on root (http://domain/)
+- Backend APIs proxy to `/api` (http://domain/api/)
+- Adminer accessible via subdomain (http://db.domain/)
+
+### Example `nginx.conf`
+
+```nginx
+server {
+ listen 80;
+ server_name your-domain.com www.your-domain.com;
+
+ location / {
+     root /usr/share/nginx/html;
+     index index.html;
+     try_files $uri $uri/ /index.html;
+ }
+
+ location /api/ {
+     proxy_pass http://backend:8000/;
+     proxy_set_header Host $host;
+     proxy_set_header X-Real-IP $remote_addr;
+     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     proxy_set_header X-Forwarded-Proto $scheme;
+ }
+
+ location /docs/ {
+     proxy_pass http://backend:8000/docs/;
+     proxy_set_header Host $host;
+     proxy_set_header X-Real-IP $remote_addr;
+     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     proxy_set_header X-Forwarded-Proto $scheme;
+ }
+
+ listen [::]:443 ssl ipv6only=on; # managed by Certbot
+ listen 443 ssl; # managed by Certbot
+ ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem; # managed by Certbot
+ ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem; # managed by Certbot
+ include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+ ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+
+server {
+ listen 8080;
+ server_name adminer.your-domain.com;
+
+ location / {
+     proxy_pass http://adminer:8080/;
+     proxy_set_header Host $host;
+     proxy_set_header X-Real-IP $remote_addr;
+     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     proxy_set_header X-Forwarded-Proto $scheme;
+ }
+}
 ```
-.
-├── backend
-│   ├── Dockerfile
-│   ├── pyproject.toml
-│   ├── poetry.lock
-│   ├── .env
-│   └── ... (other backend files)
-├── frontend
-│   ├── Dockerfile
-│   ├── package.json
-│   ├── package-lock.json
-│   ├── vite.config.js
-│   ├── nginx.conf
-│   └── ... (other frontend files)
-├── docker-compose.yml
-└── README.md
-```
-
-## Getting Started
-
-To get started with this template, please follow the instructions in the respective directories:
-
-- [Frontend README](./frontend/README.md)
-- [Backend README](./backend/README.md)
-
-### 1. Clone the Repository
-
-```sh
-git clone <repository-url>
-cd <repository-directory>
-```
-
-### 2. Set Up Environment Variables
-
-#### Backend
-
-Create a `.env` file in the `backend` directory with the following content:
-
-```
-POSTGRES_SERVER=db
-POSTGRES_PORT=5432
-POSTGRES_DB=app
-POSTGRES_USER=app
-POSTGRES_PASSWORD=changethis123
-DOMAIN=yourdomain.com
-```
-
-Replace `yourdomain.com` with your actual domain.
-
-### 3. Build and Run the Application
-
-Navigate to the root of the project directory and run the following command:
-
-```sh
-docker-compose up --build
-```
-
-This command will build the Docker images for the frontend and backend, and start the services defined in the `docker-compose.yml` file.
-
-### 4. Accessing the Services
-
-- **Frontend:** Accessible at `http://<yourdomain.com>`
-- **Backend API:** Accessible at `http://<yourdomain.com>/api`
-- **Backend Docs (Swagger):** Accessible at `http://<yourdomain.com>/docs`
-- **Backend Docs (Redoc):** Accessible at `http://<yourdomain.com>/redoc`
-- **Database Adminer:** Accessible at `http://db.<yourdomain.com>`
-- **Traefik Dashboard:** Accessible at `http://proxy.<yourdomain.com>`
-
-## Frontend Service
-
-The frontend is built using Vite and served using Nginx.
-
-### Dockerfile
-
-```Dockerfile
-# frontend/Dockerfile
-FROM node:20-alpine as build
-
-# Set the working directory
-WORKDIR /app
-
-# Copy the package.json and package-lock.json
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy the application code
-COPY . .
-
-
-# Build the application
-RUN npm run build
-
-# Production image
-FROM nginx:stable-alpine
-
-# Remove default NGINX configuration
-RUN rm -rf /etc/nginx/conf.d
-
-# Copy custom NGINX configuration
-COPY nginx.conf /etc/nginx/nginx.conf
-
-# Copy the build output to the Nginx HTML folder
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Expose the port the app runs on
-EXPOSE 80
-
-# Command to run Nginx
-CMD ["nginx", "-g", "daemon off;"]
-```
-
-## Backend Service
-
-The backend is built using FastAPI and managed with Poetry for dependency management.
-
-### Dockerfile
-
-```Dockerfile
-# backend/Dockerfile
-FROM python:3.10-slim
-
-# Set the working directory in the container
-WORKDIR /app
-
-# Copy the dependency files to the working directory
-COPY pyproject.toml poetry.lock ./
-
-# Install Poetry
-RUN pip install poetry
-
-# Install dependencies
-RUN poetry install --no-dev
-
-# Copy the rest of the application code
-COPY . .
-
-# Expose the port that your application runs on
-EXPOSE 8000
-
-# Convert line endings of prestart.sh to Unix format
-RUN apt-get update && apt-get install -y dos2unix \
-    && dos2unix ./prestart.sh \
-    && chmod +x ./prestart.sh
-
-# Run the database initialization script
-ENV PYTHONPATH=/app
-
-# Command to run the application
-CMD ["bash", "-c", "poetry run bash ./prestart.sh && poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000"]
-```
-
-## Docker Compose Configuration
-
-The services are defined in the `docker-compose.yml` file as follows:
-
-```yaml
-version: '3.7'
-
-services:
-  frontend:
-    build:
-      context: ./frontend
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.frontend.entrypoints=web"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
-
-  backend:
-    build:
-      context: ./backend
-    env_file: 
-      - ./backend/.env  
-    ports:
-      - "8000:8000"  
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/docs`) || PathPrefix(`/redoc`))"
-      - "traefik.http.routers.backend.entrypoints=web"
-      - "traefik.http.services.backend.loadbalancer.server.port=8000"
-    depends_on:
-      - db
-
-  db:
-    image: postgres:13
-    env_file: 
-      - ./backend/.env
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  adminer:
-    image: adminer
-    ports:
-      - "8080:8080" 
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.adminer.rule=Host(`db.${DOMAIN}`)"
-      - "traefik.http.routers.adminer.entrypoints=web"
-      - "traefik.http.services.adminer.loadbalancer.server.port=8080"
-
-  traefik:
-    image: traefik:latest
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
-      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.myresolver.acme.email=${EMAIL}"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-    ports:
-      - "80:80"
-      - "443:443"
-      - "8090:8090" 
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`proxy.${DOMAIN}`)"
-      - "traefik.http.routers.traefik.entrypoints=web"
-      - "traefik.http.services.traefik.loadbalancer.server.port=8080" 
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./letsencrypt:/letsencrypt
-
-volumes:
-  pgdata:
-  letsencrypt:
-```
-
-## Notes
-
-- Ensure that you replace `yourdomain.com` with your actual domain in the `.env` file and the Docker Compose labels.
-- The environment variable `DOMAIN` should be consistent across your services for Traefik routing to work correctly.
-- The environment variable `EMAIL` should be set.
-
-## Troubleshooting
-
-If you encounter any issues while setting up or running the application, please refer to the Docker and Docker Compose documentation or check the logs for each service using the following command:
-
-```sh
-docker-compose logs <service_name>
-```
-
-Replace `<service_name>` with the name of the service you want to check (e.g., `frontend`, `backend`, `db`, `adminer`, `traefik`).
-
----
